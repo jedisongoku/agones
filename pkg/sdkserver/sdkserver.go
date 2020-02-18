@@ -53,9 +53,10 @@ import (
 type Operation string
 
 const (
-	updateState      Operation = "updateState"
-	updateLabel      Operation = "updateLabel"
-	updateAnnotation Operation = "updateAnnotation"
+	updateState          Operation = "updateState"
+	updateLabel          Operation = "updateLabel"
+	updateAnnotation     Operation = "updateAnnotation"
+	updatePlayerCapacity Operation = "updatePlayerCapacity"
 )
 
 var (
@@ -94,6 +95,7 @@ type SDKServer struct {
 	gsWaitForSync      sync.WaitGroup
 	reserveTimer       *time.Timer
 	gsReserveDuration  *time.Duration
+	gsPlayerCapacity   int64
 }
 
 // NewSDKServer creates a SDKServer that sets up an
@@ -259,6 +261,8 @@ func (s *SDKServer) syncGameServer(key string) error {
 		return s.updateLabels()
 	case updateAnnotation:
 		return s.updateAnnotations()
+	case updatePlayerCapacity:
+		return s.updatePlayerCapacity()
 	}
 
 	return errors.Errorf("could not sync game server key: %s", key)
@@ -606,17 +610,58 @@ func (s *SDKServer) PlayerDisconnect(ctx context.Context, id *alpha.PlayerId) (*
 	panic("implement me")
 }
 
-// SetPlayerCapacity to change the game server's player capacity.
-func (s *SDKServer) SetPlayerCapacity(ctx context.Context, count *alpha.Count) (*alpha.Empty, error) {
-	panic("implement me")
-}
-
-// GetPlayerCapacity returns the current player capacity.
-func (s *SDKServer) GetPlayerCapacity(ctx context.Context, _ *alpha.Empty) (*alpha.Count, error) {
-	panic("implement me")
-}
-
 // GetPlayerCount returns the current player count.
 func (s *SDKServer) GetPlayerCount(ctx context.Context, _ *alpha.Empty) (*alpha.Count, error) {
 	panic("implement me")
+}
+
+// SetPlayerCapacity to change the game server's player capacity.
+// TOXO: write tests for this
+func (s *SDKServer) SetPlayerCapacity(ctx context.Context, count *alpha.Count) (*alpha.Empty, error) {
+	if !runtime.FeatureEnabled(runtime.FeaturePlayerTracking) {
+		return nil, errors.New(string(runtime.FeaturePlayerTracking) + " not enabled")
+	}
+	s.gsUpdateMutex.Lock()
+	s.gsPlayerCapacity = count.Count
+	s.gsUpdateMutex.Unlock()
+	s.workerqueue.Enqueue(updatePlayerCapacity)
+
+	return &alpha.Empty{}, nil
+}
+
+// GetPlayerCapacity returns the current player capacity.
+// TOXO: write tests for this
+func (s *SDKServer) GetPlayerCapacity(ctx context.Context, _ *alpha.Empty) (*alpha.Count, error) {
+	if !runtime.FeatureEnabled(runtime.FeaturePlayerTracking) {
+		return nil, errors.New(string(runtime.FeaturePlayerTracking) + " not enabled")
+	}
+	s.gsUpdateMutex.RLocker()
+	defer s.gsUpdateMutex.RUnlock()
+
+	count := &alpha.Count{
+		Count: s.gsPlayerCapacity,
+	}
+	return count, nil
+}
+
+// updatePlayerCapacity updates that status player capacity
+// TOXO: write tests for this
+func (s *SDKServer) updatePlayerCapacity() error {
+	if !runtime.FeatureEnabled(runtime.FeaturePlayerTracking) {
+		return errors.New(string(runtime.FeaturePlayerTracking) + " not enabled")
+	}
+	s.logger.WithField("capacity", s.gsPlayerCapacity).Debug("updating player capacity")
+	gs, err := s.gameServer()
+	if err != nil {
+		return err
+	}
+
+	gsCopy := gs.DeepCopy()
+
+	s.gsUpdateMutex.RLock()
+	gsCopy.Status.Alpha.Players.Capacity = s.gsPlayerCapacity
+	s.gsUpdateMutex.RUnlock()
+
+	_, err = s.gameServerGetter.GameServers(s.namespace).Update(gsCopy)
+	return err
 }
