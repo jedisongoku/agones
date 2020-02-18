@@ -29,6 +29,8 @@ import (
 	"agones.dev/agones/pkg/client/informers/externalversions"
 	listersv1 "agones.dev/agones/pkg/client/listers/agones/v1"
 	"agones.dev/agones/pkg/sdk"
+	"agones.dev/agones/pkg/sdk/alpha"
+	"agones.dev/agones/pkg/sdk/beta"
 	"agones.dev/agones/pkg/util/logfields"
 	"agones.dev/agones/pkg/util/runtime"
 	"agones.dev/agones/pkg/util/workerqueue"
@@ -56,7 +58,11 @@ const (
 	updateAnnotation Operation = "updateAnnotation"
 )
 
-var _ sdk.SDKServer = &SDKServer{}
+var (
+	_ sdk.SDKServer   = &SDKServer{}
+	_ alpha.SDKServer = &LocalSDKServer{}
+	_ beta.SDKServer  = &LocalSDKServer{}
+)
 
 // SDKServer is a gRPC server, that is meant to be a sidecar
 // for a GameServer that will update the game server status on SDK requests
@@ -586,4 +592,31 @@ func (s *SDKServer) healthy() bool {
 	s.healthMutex.RLock()
 	defer s.healthMutex.RUnlock()
 	return s.healthFailureCount < s.health.FailureThreshold
+}
+
+/* Alpha Functionality */
+
+// PlayerConnect should be called when a player connects.
+func (s *SDKServer) PlayerConnect(ctx context.Context, id *alpha.PlayerId) (*alpha.Empty, error) {
+	panic("implement me")
+}
+
+// PlayerDisconnect should be called when a player disconnects.
+func (s *SDKServer) PlayerDisconnect(ctx context.Context, id *alpha.PlayerId) (*alpha.Empty, error) {
+	panic("implement me")
+}
+
+// SetPlayerCapacity to change the game server's player capacity.
+func (s *SDKServer) SetPlayerCapacity(ctx context.Context, count *alpha.Count) (*alpha.Empty, error) {
+	panic("implement me")
+}
+
+// GetPlayerCapacity returns the current player capacity.
+func (s *SDKServer) GetPlayerCapacity(ctx context.Context, _ *alpha.Empty) (*alpha.Count, error) {
+	panic("implement me")
+}
+
+// GetPlayerCount returns the current player count.
+func (s *SDKServer) GetPlayerCount(ctx context.Context, _ *alpha.Empty) (*alpha.Count, error) {
+	panic("implement me")
 }
