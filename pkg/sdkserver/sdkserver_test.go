@@ -20,6 +20,9 @@ import (
 	"testing"
 	"time"
 
+	"agones.dev/agones/pkg/sdk/alpha"
+	agruntime "agones.dev/agones/pkg/util/runtime"
+
 	agonesv1 "agones.dev/agones/pkg/apis/agones/v1"
 	"agones.dev/agones/pkg/sdk"
 	agtesting "agones.dev/agones/pkg/testing"
@@ -899,6 +902,83 @@ func TestSDKServerReserveTimeout(t *testing.T) {
 
 	close(stop)
 	wg.Wait()
+}
+
+/* Alpha Functionality */
+
+func TestSDKServerPlayerCapacity(t *testing.T) {
+	err := agruntime.ParseFeatures(string(agruntime.FeaturePlayerTracking) + "=true")
+	assert.NoError(t, err)
+
+	t.Parallel()
+	m := agtesting.NewMocks()
+
+	stop := make(chan struct{})
+	defer close(stop)
+
+	sc, err := defaultSidecar(m)
+	assert.Nil(t, err)
+
+	m.AgonesClient.AddReactor("list", "gameservers", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		gs := agonesv1.GameServer{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "test", Namespace: "default",
+			},
+			Spec: agonesv1.GameServerSpec{
+				SdkServer: agonesv1.SdkServer{
+					LogLevel: "Debug",
+				},
+				Alpha: agonesv1.AlphaSpec{
+					Players: agonesv1.PlayersSpec{
+						InitialCapacity: 10,
+					},
+				},
+			},
+		}
+		gs.ApplyDefaults()
+		return true, &agonesv1.GameServerList{Items: []agonesv1.GameServer{gs}}, nil
+	})
+
+	updated := make(chan int64, 10)
+	m.AgonesClient.AddReactor("update", "gameservers", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		ua := action.(k8stesting.UpdateAction)
+		gs := ua.GetObject().(*agonesv1.GameServer)
+		updated <- gs.Status.Alpha.Players.Capacity
+		return true, gs, nil
+	})
+
+	sc.informerFactory.Start(stop)
+	assert.True(t, cache.WaitForCacheSync(stop, sc.gameServerSynced))
+
+	go func() {
+		err = sc.Run(stop)
+		assert.NoError(t, err)
+	}()
+
+	// check initial value comes through
+
+	// async, so check after a period
+	err = wait.Poll(time.Second, 10*time.Second, func() (bool, error) {
+		count, err := sc.GetPlayerCapacity(context.Background(), &alpha.Empty{})
+		return count.Count == 10, err
+	})
+	assert.NoError(t, err)
+
+	// on update from the SDK, the value is available from GetPlayerCapacity
+	_, err = sc.SetPlayerCapacity(context.Background(), &alpha.Count{Count: 20})
+	assert.NoError(t, err)
+
+	count, err := sc.GetPlayerCapacity(context.Background(), &alpha.Empty{})
+	assert.NoError(t, err)
+	assert.Equal(t, int64(20), count.Count)
+
+	// on an update, confirm that the update hits the K8s api
+	select {
+	case value := <-updated:
+		assert.Equal(t, int64(20), value)
+	case <-time.After(time.Minute):
+		assert.Fail(t, "Should have been updated")
+	}
 }
 
 func defaultSidecar(m agtesting.Mocks) (*SDKServer, error) {

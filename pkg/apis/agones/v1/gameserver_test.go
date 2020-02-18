@@ -78,7 +78,7 @@ func TestGameServerApplyDefaults(t *testing.T) {
 		expected     expected
 	}{
 		"set basic defaults on a very simple gameserver": {
-			featureFlags: runtime.FeaturePlayerTracking + "=true",
+			featureFlags: string(runtime.FeaturePlayerTracking) + "=true",
 			gameServer: GameServer{
 				Spec: GameServerSpec{
 					Alpha: AlphaSpec{Players: PlayersSpec{InitialCapacity: 10}},

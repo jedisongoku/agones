@@ -45,7 +45,8 @@ service SDK {
         };
     }
 
-    // get the current player capacity
+    // Get the last player capacity that was set through the SDK.
+    // if the player capacity is set from outside the SDK, use SDK.Alpha.GameServer() instead.
     rpc GetPlayerCapacity(Empty) returns (Count) {
         option (google.api.http) = {
             get: "/alpha/player/capacity"

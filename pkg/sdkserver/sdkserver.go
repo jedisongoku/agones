@@ -230,6 +230,13 @@ func (s *SDKServer) Run(stop <-chan struct{}) error {
 		go wait.Until(s.runHealth, s.healthTimeout, stop)
 	}
 
+	// populate player capacity value
+	if runtime.FeatureEnabled(runtime.FeaturePlayerTracking) {
+		s.gsUpdateMutex.Lock()
+		s.gsPlayerCapacity = gs.Status.Alpha.Players.Capacity
+		s.gsUpdateMutex.Unlock()
+	}
+
 	// then start the http endpoints
 	s.logger.Info("Starting SDKServer http health check...")
 	go func() {
@@ -616,7 +623,6 @@ func (s *SDKServer) GetPlayerCount(ctx context.Context, _ *alpha.Empty) (*alpha.
 }
 
 // SetPlayerCapacity to change the game server's player capacity.
-// TOXO: write tests for this
 func (s *SDKServer) SetPlayerCapacity(ctx context.Context, count *alpha.Count) (*alpha.Empty, error) {
 	if !runtime.FeatureEnabled(runtime.FeaturePlayerTracking) {
 		return nil, errors.New(string(runtime.FeaturePlayerTracking) + " not enabled")
@@ -624,18 +630,17 @@ func (s *SDKServer) SetPlayerCapacity(ctx context.Context, count *alpha.Count) (
 	s.gsUpdateMutex.Lock()
 	s.gsPlayerCapacity = count.Count
 	s.gsUpdateMutex.Unlock()
-	s.workerqueue.Enqueue(updatePlayerCapacity)
+	s.workerqueue.Enqueue(cache.ExplicitKey(string(updatePlayerCapacity)))
 
 	return &alpha.Empty{}, nil
 }
 
 // GetPlayerCapacity returns the current player capacity.
-// TOXO: write tests for this
 func (s *SDKServer) GetPlayerCapacity(ctx context.Context, _ *alpha.Empty) (*alpha.Count, error) {
 	if !runtime.FeatureEnabled(runtime.FeaturePlayerTracking) {
 		return nil, errors.New(string(runtime.FeaturePlayerTracking) + " not enabled")
 	}
-	s.gsUpdateMutex.RLocker()
+	s.gsUpdateMutex.RLock()
 	defer s.gsUpdateMutex.RUnlock()
 
 	count := &alpha.Count{
@@ -645,7 +650,6 @@ func (s *SDKServer) GetPlayerCapacity(ctx context.Context, _ *alpha.Empty) (*alp
 }
 
 // updatePlayerCapacity updates that status player capacity
-// TOXO: write tests for this
 func (s *SDKServer) updatePlayerCapacity() error {
 	if !runtime.FeatureEnabled(runtime.FeaturePlayerTracking) {
 		return errors.New(string(runtime.FeaturePlayerTracking) + " not enabled")
