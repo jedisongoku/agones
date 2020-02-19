@@ -152,7 +152,8 @@ type GameServerSpec struct {
 	// Template describes the Pod that will be created for the GameServer
 	Template corev1.PodTemplateSpec `json:"template"`
 	// Alpha describes the alpha properties for the GameServer.
-	Alpha AlphaSpec `json:"alpha,omitempty"`
+	// +optional
+	Alpha *AlphaSpec `json:"alpha,omitempty"`
 }
 
 // AlphaSpec contains the alpha properties of the GameServer.
@@ -225,7 +226,8 @@ type GameServerStatus struct {
 	Address       string                 `json:"address"`
 	NodeName      string                 `json:"nodeName"`
 	ReservedUntil *metav1.Time           `json:"reservedUntil"`
-	Alpha         AlphaStatus            `json:"alpha"`
+	// +optional
+	Alpha *AlphaStatus `json:"alpha,omitempty"`
 }
 
 // GameServerStatusPort shows the port that was allocated to a
@@ -267,6 +269,10 @@ func (gss *GameServerSpec) ApplyDefaults() {
 	gss.applyHealthDefaults()
 	gss.applySchedulingDefaults()
 	gss.applySdkServerDefaults()
+
+	if !runtime.FeatureEnabled(runtime.FeaturePlayerTracking) {
+		gss.Alpha = nil
+	}
 }
 
 // applySdkServerDefaults applies the default log level ("Info") for the sidecar
@@ -315,7 +321,14 @@ func (gs *GameServer) applyStatusDefaults() {
 	}
 
 	if runtime.FeatureEnabled(runtime.FeaturePlayerTracking) {
-		gs.Status.Alpha.Players.Capacity = gs.Spec.Alpha.Players.InitialCapacity
+		if gs.Spec.Alpha != nil {
+			if gs.Status.Alpha == nil {
+				gs.Status.Alpha = &AlphaStatus{}
+			}
+			gs.Status.Alpha.Players.Capacity = gs.Spec.Alpha.Players.InitialCapacity
+		}
+	} else {
+		gs.Status.Alpha = nil
 	}
 }
 

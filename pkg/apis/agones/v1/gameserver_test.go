@@ -62,6 +62,8 @@ func TestGameServerFindGameServerContainer(t *testing.T) {
 func TestGameServerApplyDefaults(t *testing.T) {
 	t.Parallel()
 
+	ten := int64(10)
+
 	type expected struct {
 		protocol            corev1.Protocol
 		state               GameServerState
@@ -69,7 +71,7 @@ func TestGameServerApplyDefaults(t *testing.T) {
 		health              Health
 		scheduling          apis.SchedulingStrategy
 		sdkServer           SdkServer
-		alphaPlayerCapacity int64
+		alphaPlayerCapacity *int64
 	}
 	data := map[string]struct {
 		gameServer   GameServer
@@ -81,7 +83,7 @@ func TestGameServerApplyDefaults(t *testing.T) {
 			featureFlags: runtime.FeaturePlayerTracking + "=true",
 			gameServer: GameServer{
 				Spec: GameServerSpec{
-					Alpha: AlphaSpec{Players: PlayersSpec{InitialCapacity: 10}},
+					Alpha: &AlphaSpec{Players: PlayersSpec{InitialCapacity: 10}},
 					Ports: []GameServerPort{{ContainerPort: 999}},
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{Containers: []corev1.Container{
@@ -105,7 +107,7 @@ func TestGameServerApplyDefaults(t *testing.T) {
 					GRPCPort: 9357,
 					HTTPPort: 9358,
 				},
-				alphaPlayerCapacity: 10,
+				alphaPlayerCapacity: &ten,
 			},
 		},
 		"defaults on passthrough": {
@@ -139,6 +141,7 @@ func TestGameServerApplyDefaults(t *testing.T) {
 		"defaults are already set": {
 			gameServer: GameServer{
 				Spec: GameServerSpec{
+					Alpha:     &AlphaSpec{Players: PlayersSpec{InitialCapacity: 10}},
 					Container: "testing2",
 					Ports: []GameServerPort{{
 						Protocol:   "TCP",
@@ -186,7 +189,7 @@ func TestGameServerApplyDefaults(t *testing.T) {
 			gameServer: GameServer{
 				Spec: GameServerSpec{
 					Ports: []GameServerPort{{PortPolicy: Static}},
-					Alpha: AlphaSpec{Players: PlayersSpec{InitialCapacity: 10}},
+					Alpha: &AlphaSpec{Players: PlayersSpec{InitialCapacity: 10}},
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "testing", Image: "testing/image"}}}}},
 			},
@@ -346,7 +349,12 @@ func TestGameServerApplyDefaults(t *testing.T) {
 			assert.Equal(t, test.expected.scheduling, test.gameServer.Spec.Scheduling)
 			assert.Equal(t, test.expected.health, test.gameServer.Spec.Health)
 			assert.Equal(t, test.expected.sdkServer, test.gameServer.Spec.SdkServer)
-			assert.Equal(t, test.expected.alphaPlayerCapacity, test.gameServer.Status.Alpha.Players.Capacity)
+			if test.expected.alphaPlayerCapacity != nil {
+				assert.Equal(t, *test.expected.alphaPlayerCapacity, test.gameServer.Status.Alpha.Players.Capacity)
+			} else {
+				assert.Nil(t, test.gameServer.Spec.Alpha)
+				assert.Nil(t, test.gameServer.Status.Alpha)
+			}
 		})
 	}
 }

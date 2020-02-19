@@ -336,7 +336,11 @@ func (in *GameServerSpec) DeepCopyInto(out *GameServerSpec) {
 	out.Health = in.Health
 	out.SdkServer = in.SdkServer
 	in.Template.DeepCopyInto(&out.Template)
-	in.Alpha.DeepCopyInto(&out.Alpha)
+	if in.Alpha != nil {
+		in, out := &in.Alpha, &out.Alpha
+		*out = new(AlphaSpec)
+		(*in).DeepCopyInto(*out)
+	}
 	return
 }
 
@@ -362,7 +366,11 @@ func (in *GameServerStatus) DeepCopyInto(out *GameServerStatus) {
 		in, out := &in.ReservedUntil, &out.ReservedUntil
 		*out = (*in).DeepCopy()
 	}
-	out.Alpha = in.Alpha
+	if in.Alpha != nil {
+		in, out := &in.Alpha, &out.Alpha
+		*out = new(AlphaStatus)
+		**out = **in
+	}
 	return
 }
 
