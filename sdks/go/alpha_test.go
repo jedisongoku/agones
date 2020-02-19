@@ -34,9 +34,9 @@ func TestAlphaGetAndSetPlayerCapacity(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(15), mock.capacity)
 
-	cap, err := a.GetPlayerCapacity()
+	capacity, err := a.GetPlayerCapacity()
 	assert.NoError(t, err)
-	assert.Equal(t, int64(15), cap)
+	assert.Equal(t, int64(15), capacity)
 }
 
 type alphaMock struct {

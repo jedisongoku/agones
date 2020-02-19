@@ -44,7 +44,7 @@ func (a *Alpha) GetPlayerCapacity() (int64, error) {
 }
 
 // SetPlayerCapacity changes the player capacity to a new value
-func (a *Alpha) SetPlayerCapacity(cap int64) error {
-	_, err := a.client.SetPlayerCapacity(a.ctx, &alpha.Count{Count: cap})
+func (a *Alpha) SetPlayerCapacity(capacity int64) error {
+	_, err := a.client.SetPlayerCapacity(a.ctx, &alpha.Count{Count: capacity})
 	return errors.Wrap(err, "could not set player capacity")
 }
