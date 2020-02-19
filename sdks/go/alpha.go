@@ -17,18 +17,18 @@ package sdk
 import (
 	"context"
 
-	"github.com/pkg/errors"
-
 	"agones.dev/agones/pkg/sdk/alpha"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 )
 
-// Alpha is the struct for Alpha functionality
+// Alpha is the struct for Alpha SDK functionality
 type Alpha struct {
 	client alpha.SDKClient
 	ctx    context.Context
 }
 
+// newAlpha creates a new Alpha SDK with the passed in connection.
 func newAlpha(conn *grpc.ClientConn) *Alpha {
 	return &Alpha{
 		ctx:    context.Background(),
@@ -36,7 +36,7 @@ func newAlpha(conn *grpc.ClientConn) *Alpha {
 	}
 }
 
-// Get the last player capacity that was set through the SDK.
+// GetPlayerCapacity gets the last player capacity that was set through the SDK.
 // if the player capacity is set from outside the SDK, use SDK.Alpha.GameServer() instead.
 func (a *Alpha) GetPlayerCapacity() (int64, error) {
 	c, err := a.client.GetPlayerCapacity(a.ctx, &alpha.Empty{})
