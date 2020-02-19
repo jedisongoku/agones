@@ -20,12 +20,11 @@ import (
 	"testing"
 	"time"
 
-	"agones.dev/agones/pkg/sdk/alpha"
-	agruntime "agones.dev/agones/pkg/util/runtime"
-
 	agonesv1 "agones.dev/agones/pkg/apis/agones/v1"
 	"agones.dev/agones/pkg/sdk"
+	"agones.dev/agones/pkg/sdk/alpha"
 	agtesting "agones.dev/agones/pkg/testing"
+	agruntime "agones.dev/agones/pkg/util/runtime"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"

@@ -15,10 +15,10 @@
 package sdk
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"agones.dev/agones/pkg/sdk/alpha"
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
