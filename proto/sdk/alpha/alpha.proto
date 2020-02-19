@@ -37,7 +37,7 @@ service SDK {
         };
     }
 
-    // change the player capacity to a new value
+    // changes the player capacity to a new value
     rpc SetPlayerCapacity (Count) returns (Empty) {
         option (google.api.http) = {
             post: "/alpha/player/capacity"
